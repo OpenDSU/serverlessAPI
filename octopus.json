@@ -1,0 +1,16 @@
+{
+    "workDir": ".",
+    "dependencies": [
+        {
+            "name": "httpWrapper",
+            "src": "http://github.com/opendsu/http-wrapper.git",
+            "actions": [
+                {
+                    "type": "smartClone",
+                    "target": ".",
+                    "collectLog": false
+                }
+            ]
+        }
+    ]
+}

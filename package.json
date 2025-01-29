@@ -1,0 +1,18 @@
+{
+    "name": "serverlessapi",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "postinstall": "node ./node_modules/octopus/scripts/setEnv --file=../../../env.json \"node ./node_modules/octopus/scripts/run\"",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/OpenDSU/serverlessAPI.git"
+    },
+    "dependencies": {
+        "octopus": "git+http://github.com/opendsu/octopus.git"
+    },
+    "private": true
+}
