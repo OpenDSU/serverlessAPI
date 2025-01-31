@@ -117,7 +117,7 @@ function ServerlessAPI(config, callback) {
             next();
         });
 
-        server.put(`${urlPrefix}/executeCommand/`, bodyParser);
+        server.put(`${urlPrefix}/executeCommand`, bodyParser);
 
         const executeCommand = (req, res) => {
             let command = req.body;
@@ -130,7 +130,7 @@ function ServerlessAPI(config, callback) {
                 return res.end();
             }
 
-            if(core.allowCommand(command.asUser) === false){
+            if(core.allow(command.asUser) === false){
                 res.statusCode = 401;
                 return res.end(`User ${command.asUser} is not allowed to execute commands`);
             }
@@ -145,10 +145,10 @@ function ServerlessAPI(config, callback) {
             });
         }
 
-        server.put(`${urlPrefix}/executeCommand/`, executeCommand);
+        server.put(`${urlPrefix}/executeCommand`, executeCommand);
     }
 
-    this.getUrl = () => {
+    server.getUrl = () => {
         return `http://${host}:${port}${urlPrefix}`;
     }
 
