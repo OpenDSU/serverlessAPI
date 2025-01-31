@@ -8,7 +8,7 @@ process.on('SIGTERM', (signal) => {
 });
 
 function ServerlessAPI(config, callback) {
-    let {storage, port, dynamicPort, host, prefixUrl, corePath, coreConfig} = config;
+    let {storage, port, dynamicPort, host, urlPrefix, corePath, coreConfig} = config;
     const httpWrapper = require("./httpWrapper");
     const Server = httpWrapper.Server;
     const bodyParser = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
@@ -113,12 +113,11 @@ function ServerlessAPI(config, callback) {
         server.use(function (req, res, next) {
             res.setHeader('Access-Control-Allow-Origin', req.headers.origin || req.headers.host || "*");
             res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, OPTIONS');
-            res.setHeader('Access-Control-Allow-Headers', server.getAccessControlAllowHeadersAsString());
             res.setHeader('Access-Control-Allow-Credentials', true);
             next();
         });
 
-        server.put(`${prefixUrl}/executeCommand/`, bodyParser);
+        server.put(`${urlPrefix}/executeCommand/`, bodyParser);
 
         const executeCommand = (req, res) => {
             let command = req.body;
@@ -136,7 +135,7 @@ function ServerlessAPI(config, callback) {
                 return res.end(`User ${command.asUser} is not allowed to execute commands`);
             }
 
-            core[command.commandName](...command.args, (err, result) => {
+            core[command.name](...command.args, (err, result) => {
                 if(err){
                     res.statusCode = 500;
                     return res.end(err.message);
@@ -146,8 +145,19 @@ function ServerlessAPI(config, callback) {
             });
         }
 
-        server.put(`${prefixUrl}/executeCommand/`, executeCommand);
+        server.put(`${urlPrefix}/executeCommand/`, executeCommand);
     }
+
+    this.getUrl = () => {
+        return `http://${host}:${port}${urlPrefix}`;
+    }
+
+    return server;
 }
 
-module.exports = ServerlessAPI;
+const createServerlessAPI = (config, callback) => {
+    return new ServerlessAPI(config, callback);
+}
+module.exports = {
+    createServerlessAPI
+}
