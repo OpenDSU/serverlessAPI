@@ -13,7 +13,7 @@ function ServerlessAPI(config, callback) {
     const Server = httpWrapper.Server;
     const bodyParser = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
     const Core = require(corePath);
-    const core = new Core(coreConfig);
+    const core = Core.getCoreInstance(coreConfig);
     const CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL = 500;
     host = host || "127.0.0.1";
     port = port || 8082;
