@@ -130,9 +130,9 @@ function ServerlessAPI(config, callback) {
                 return res.end();
             }
 
-            if(core.allow(command.asUser) === false){
+            if(core.allow(command.forWhom, command.name, command.args) === false){
                 res.statusCode = 401;
-                return res.end(`User ${command.asUser} is not allowed to execute commands`);
+                return res.end(`User ${command.forWhom} is not allowed to execute commands`);
             }
 
             core[command.name](...command.args, (err, result) => {
