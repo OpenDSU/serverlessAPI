@@ -13,7 +13,7 @@ function ServerlessAPI(config, callback) {
     const Server = httpWrapper.Server;
     const bodyParser = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
     const Core = require(corePath);
-    const core = Core.getCoreInstance(coreConfig);
+    let core;
     const CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL = 500;
     host = host || "127.0.0.1";
     port = port || 8082;
@@ -119,7 +119,10 @@ function ServerlessAPI(config, callback) {
 
         server.put(`${urlPrefix}/executeCommand`, bodyParser);
 
-        const executeCommand = (req, res) => {
+        const executeCommand = async (req, res) => {
+            if (!core) {
+                core = await Core.getCoreInstance(coreConfig);
+            }
             let command = req.body;
             try {
                 command = JSON.parse(command);
