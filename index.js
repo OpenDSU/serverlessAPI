@@ -133,20 +133,20 @@ function ServerlessAPI(config, callback) {
                 return res.end();
             }
 
-            if(core.allow(command.forWhom, command.name, command.args) === false){
+            if (core.allow(command.forWhom, command.name, command.args) === false) {
                 res.statusCode = 401;
                 return res.end(`User ${command.forWhom} is not allowed to execute commands`);
             }
+            let resObj = {err: undefined, result: undefined};
+            try {
+                resObj.result = await core[command.name](...command.args);
+                res.statusCode = 200;
 
-            core[command.name](...command.args, (err, result) => {
-                let resObj = {err, result};
-                if (err) {
-                    res.statusCode = 500;
-                } else {
-                    res.statusCode = 200;
-                }
-                res.end(JSON.stringify(resObj));
-            });
+            } catch (e) {
+                res.statusCode = 500;
+                resObj.err = e;
+            }
+            res.end(JSON.stringify(resObj));
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
