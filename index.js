@@ -139,13 +139,13 @@ function ServerlessAPI(config, callback) {
             }
 
             core[command.name](...command.args, (err, result) => {
-                let res = {err, result};
+                let resObj = {err, result};
                 if (err) {
                     res.statusCode = 500;
                 } else {
                     res.statusCode = 200;
                 }
-                res.end(JSON.stringify(res));
+                res.end(JSON.stringify(resObj));
             });
         }
 
