@@ -129,13 +129,12 @@ function ServerlessAPI(config, callback) {
             } catch (e) {
                 console.error("Invalid body", command);
                 res.statusCode = 400;
-                res.write("Invalid body");
-                return res.end();
+                return res.end(JSON.stringify({err: "Invalid body"}));
             }
 
-            if (core.allow(command.forWhom, command.name, command.args) === false) {
+            if (core.allow(command.forWhom, command.name, ...command.args) === false) {
                 res.statusCode = 401;
-                return res.end(`User ${command.forWhom} is not allowed to execute commands`);
+                res.end(JSON.stringify({err: `User ${command.forWhom} is not allowed to execute commands`}));
             }
             let resObj = {err: undefined, result: undefined};
             try {
@@ -146,7 +145,13 @@ function ServerlessAPI(config, callback) {
                 res.statusCode = 500;
                 resObj.err = e;
             }
-            res.end(JSON.stringify(resObj));
+            try {
+                res.end(JSON.stringify(resObj));
+            } catch (e) {
+                res.statusCode = 500;
+                res.end(JSON.stringify({err: e}));
+            }
+
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
