@@ -119,6 +119,21 @@ function ServerlessAPI(config, callback) {
 
         server.put(`${urlPrefix}/executeCommand`, bodyParser);
 
+        function errorReplacer(key, value) {
+            // Check if the value is an Error object
+            if (value instanceof Error) {
+                // Return an object with the properties you want
+                return {
+                    name: value.name,
+                    message: value.message,
+                    stack: value.stack,
+                    // Optionally, include any other custom properties
+                    ...value
+                };
+            }
+            return value;
+        }
+
         const executeCommand = async (req, res) => {
             if (!core) {
                 core = await Core.getCoreInstance(coreConfig);
@@ -146,10 +161,10 @@ function ServerlessAPI(config, callback) {
                 resObj.err = e;
             }
             try {
-                res.end(JSON.stringify(resObj));
+                res.end(JSON.stringify(resObj, errorReplacer));
             } catch (e) {
                 res.statusCode = 500;
-                res.end(JSON.stringify({err: e}));
+                res.end(JSON.stringify({err: e}, errorReplacer));
             }
 
         }
