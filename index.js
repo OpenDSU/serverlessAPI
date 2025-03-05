@@ -8,12 +8,12 @@ process.on('SIGTERM', (signal) => {
 });
 
 function ServerlessAPI(config, callback) {
-    let {storage, port, dynamicPort, host, urlPrefix, corePath, coreConfig} = config;
+    let {storage, port, dynamicPort, host, urlPrefix, coreConfigs} = config;
     const httpWrapper = require("./httpWrapper");
     const Server = httpWrapper.Server;
     const bodyParser = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
-    const Core = require(corePath);
-    let core;
+    const CoreContainer = require("./lib/CoreContainer");
+    const coreContainer = new CoreContainer(coreConfigs);
     const CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL = 500;
     host = host || "127.0.0.1";
     port = port || 8082;
@@ -135,9 +135,6 @@ function ServerlessAPI(config, callback) {
         }
 
         const executeCommand = async (req, res) => {
-            if (!core) {
-                core = await Core.getCoreInstance(coreConfig);
-            }
             let command = req.body;
             try {
                 command = JSON.parse(command);
@@ -146,14 +143,9 @@ function ServerlessAPI(config, callback) {
                 res.statusCode = 400;
                 return res.end(JSON.stringify({err: "Invalid body"}));
             }
-
-            if (core.allow(command.forWhom, command.name, ...command.args) === false) {
-                res.statusCode = 401;
-                res.end(JSON.stringify({err: `User ${command.forWhom} is not allowed to execute commands`}));
-            }
             let resObj = {err: undefined, result: undefined};
             try {
-                resObj.result = await core[command.name](...command.args);
+                resObj.result = await coreContainer.executeCommand(command);
                 res.statusCode = 200;
 
             } catch (e) {
