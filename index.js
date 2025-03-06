@@ -162,12 +162,35 @@ function ServerlessAPI(config, callback) {
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
-    }
 
+        server.put(`${urlPrefix}/registerPlugin`, bodyParser);
+        server.put(`${urlPrefix}/registerPlugin`, async (req, res) => {
+            let {pluginPath, namespace, config} = req.body;
+            try {
+                coreContainer.registerPlugin(pluginPath, namespace, config);
+                res.statusCode = 200;
+                res.end();
+            } catch (e) {
+                res.statusCode = 500;
+                res.end(JSON.stringify({err: e}));
+            }
+        })
+
+        server.get(`${urlPrefix}/getPluginInterface/:namespace`, async (req, res) => {
+            let {namespace} = req.params;
+            try {
+                let interfaceDefinition = coreContainer.getPluginInterface(namespace);
+                res.statusCode = 200;
+                res.end(JSON.stringify(interfaceDefinition));
+            } catch (e) {
+                res.statusCode = 500;
+                res.end(JSON.stringify({err: e}));
+            }
+        })
+    }
     server.getUrl = () => {
         return `http://${host}:${port}${urlPrefix}`;
     }
-
     return server;
 }
 
