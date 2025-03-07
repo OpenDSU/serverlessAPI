@@ -1,17 +1,40 @@
+const path = require("path");
+const bundlePath = path.join(process.env.PSK_ROOT_INSTALATION_FOLDER, 'builds/output/pskWebServer.js');
+require(bundlePath);
+
+
 process.on('uncaughtException', err => {
     console.error('There was an uncaught error', err);
+    // Notify parent process of the error
+    if (process.connected) {
+        process.send({ type: 'error', error: err.message });
+    }
 });
 
 process.on('SIGTERM', (signal) => {
     process.shuttingDown = true;
     console.info('Received signal:', signal, ". Activating the gracefulTerminationWatcher.");
+    shutdown();
 });
 
-function ServerlessAPI(config, callback) {
+let server = null;
+
+function shutdown() {
+    if (server) {
+        server.close(() => {
+            console.info('Server has been gracefully shut down');
+            process.exit(0);
+        });
+    } else {
+        process.exit(0);
+    }
+}
+
+function ServerlessAPI(config) {
     let {storage, port, dynamicPort, host, urlPrefix, coreConfigs} = config;
     const httpWrapper = require("./httpWrapper");
     const Server = httpWrapper.Server;
-    const bodyParser = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
+    const bodyReaderMiddleware = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
     const CoreContainer = require("./lib/CoreContainer");
     const coreContainer = new CoreContainer(coreConfigs);
     const CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL = 500;
@@ -51,8 +74,9 @@ function ServerlessAPI(config, callback) {
                 return
             }
             console.error(err);
-            if (!dynamicPort && callback) {
-                return callback(err);
+            // Notify parent process of the error
+            if (process.connected) {
+                process.send({ type: 'error', error: err.message || 'Failed to start server' });
             }
         }
     };
@@ -60,16 +84,25 @@ function ServerlessAPI(config, callback) {
     function bindFinished(err) {
         if (err) {
             console.error(err);
-            if (callback) {
-                return callback(err);
+            // Notify parent process of the error
+            if (process.connected) {
+                process.send({ type: 'error', error: err.message || 'Failed to bind server' });
             }
             return;
         }
 
         console.info(`LightDB server running at port: ${port}`);
         registerEndpoints();
-        if (callback) {
-            callback(undefined, server);
+
+        // Notify parent process that server is ready with the URL
+        if (process.connected) {
+            const serverUrl = server.getUrl();
+            process.send({
+                type: 'ready',
+                url: serverUrl,
+                port: port
+            });
+            console.info(`Server URL: ${serverUrl} sent to parent process`);
         }
     }
 
@@ -117,7 +150,7 @@ function ServerlessAPI(config, callback) {
             next();
         });
 
-        server.put(`${urlPrefix}/executeCommand`, bodyParser);
+        server.put(`${urlPrefix}/executeCommand`, bodyReaderMiddleware);
 
         function errorReplacer(key, value) {
             // Check if the value is an Error object
@@ -163,11 +196,19 @@ function ServerlessAPI(config, callback) {
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
 
-        server.put(`${urlPrefix}/registerPlugin`, bodyParser);
+        server.put(`${urlPrefix}/registerPlugin`, bodyReaderMiddleware);
         server.put(`${urlPrefix}/registerPlugin`, async (req, res) => {
-            let {pluginPath, namespace, config} = req.body;
+            let parsedBody;
             try {
-                coreContainer.registerPlugin(pluginPath, namespace, config);
+                parsedBody = JSON.parse(req.body);
+            } catch (e) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({err: "Invalid body"}));
+                return;
+            }
+            let {pluginPath, namespace, config} = parsedBody;
+            try {
+                await coreContainer.registerPlugin(pluginPath, namespace, config);
                 res.statusCode = 200;
                 res.end();
             } catch (e) {
@@ -194,9 +235,13 @@ function ServerlessAPI(config, callback) {
     return server;
 }
 
-const createServerlessAPI = (config, callback) => {
-    return new ServerlessAPI(config, callback);
-}
-module.exports = {
-    createServerlessAPI
-}
+// Listen for messages from the parent process
+process.on('message', (message) => {
+    if (message.type === 'start') {
+        // Start the server with the provided configuration
+        server = ServerlessAPI(message.config);
+    } else if (message.type === 'shutdown') {
+        // Gracefully shut down the server
+        shutdown();
+    }
+});
