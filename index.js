@@ -2,7 +2,6 @@ const path = require("path");
 const bundlePath = path.join(process.env.PSK_ROOT_INSTALATION_FOLDER, 'builds/output/pskWebServer.js');
 require(bundlePath);
 
-
 process.on('uncaughtException', err => {
     console.error('There was an uncaught error', err);
     // Notify parent process of the error
@@ -206,23 +205,11 @@ function ServerlessAPI(config) {
                 res.end(JSON.stringify({err: "Invalid body"}));
                 return;
             }
-            let {pluginPath, namespace, config} = parsedBody;
+            let {pluginPath, pluginName} = parsedBody;
             try {
-                await coreContainer.registerPlugin(pluginPath, namespace, config);
+                await coreContainer.registerPlugin(pluginName, pluginPath);
                 res.statusCode = 200;
                 res.end();
-            } catch (e) {
-                res.statusCode = 500;
-                res.end(JSON.stringify({err: e}));
-            }
-        })
-
-        server.get(`${urlPrefix}/getPluginInterface/:namespace`, async (req, res) => {
-            let {namespace} = req.params;
-            try {
-                let interfaceDefinition = coreContainer.getPluginInterface(namespace);
-                res.statusCode = 200;
-                res.end(JSON.stringify(interfaceDefinition));
             } catch (e) {
                 res.statusCode = 500;
                 res.end(JSON.stringify({err: e}));
