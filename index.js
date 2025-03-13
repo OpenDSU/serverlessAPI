@@ -6,7 +6,7 @@ process.on('uncaughtException', err => {
     console.error('There was an uncaught error', err);
     // Notify parent process of the error
     if (process.connected) {
-        process.send({ type: 'error', error: err.message });
+        process.send({type: 'error', error: err.message});
     }
 });
 
@@ -31,6 +31,7 @@ function shutdown() {
 
 function ServerlessAPI(config) {
     let {storage, port, dynamicPort, host, urlPrefix, coreConfigs} = config;
+    urlPrefix = `/${urlPrefix}`;
     const httpWrapper = require("./httpWrapper");
     const Server = httpWrapper.Server;
     const bodyReaderMiddleware = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
@@ -75,7 +76,7 @@ function ServerlessAPI(config) {
             console.error(err);
             // Notify parent process of the error
             if (process.connected) {
-                process.send({ type: 'error', error: err.message || 'Failed to start server' });
+                process.send({type: 'error', error: err.message || 'Failed to start server'});
             }
         }
     };
@@ -85,7 +86,7 @@ function ServerlessAPI(config) {
             console.error(err);
             // Notify parent process of the error
             if (process.connected) {
-                process.send({ type: 'error', error: err.message || 'Failed to bind server' });
+                process.send({type: 'error', error: err.message || 'Failed to bind server'});
             }
             return;
         }
@@ -167,30 +168,27 @@ function ServerlessAPI(config) {
         }
 
         const executeCommand = async (req, res) => {
+            let resObj = {statusCode: undefined, result: undefined};
             let command = req.body;
             try {
                 command = JSON.parse(command);
             } catch (e) {
                 console.error("Invalid body", command);
                 res.statusCode = 400;
-                return res.end(JSON.stringify({err: "Invalid body"}));
+                resObj.statusCode = 400;
+                resObj.result = "Invalid body";
+                return res.end(JSON.stringify(resObj));
             }
-            let resObj = {err: undefined, result: undefined};
             try {
                 resObj.result = await coreContainer.executeCommand(command);
+                resObj.statusCode = 200;
                 res.statusCode = 200;
-
             } catch (e) {
                 res.statusCode = 500;
-                resObj.err = e;
+                resObj.statusCode = 500;
+                resObj.result = e.message;
             }
-            try {
-                res.end(JSON.stringify(resObj, errorReplacer));
-            } catch (e) {
-                res.statusCode = 500;
-                res.end(JSON.stringify({err: e}, errorReplacer));
-            }
-
+            res.end(JSON.stringify(resObj));
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
@@ -209,13 +207,14 @@ function ServerlessAPI(config) {
             try {
                 await coreContainer.registerPlugin(pluginName, pluginPath);
                 res.statusCode = 200;
-                res.end();
+                res.end(JSON.stringify({result: "success", statusCode: 200}));
             } catch (e) {
                 res.statusCode = 500;
-                res.end(JSON.stringify({err: e}));
+                res.end(JSON.stringify({result: e.message, statusCode: 500}));
             }
         })
     }
+
     server.getUrl = () => {
         return `http://${host}:${port}${urlPrefix}`;
     }
