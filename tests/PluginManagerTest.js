@@ -36,40 +36,34 @@ function setupTestEnvironment() {
     fs.mkdirSync(pluginsDir, { recursive: true });
 
     // Create plugin A - no dependencies
-    createPluginDir('pluginA', []);
+    createPluginFile('pluginA', []);
 
     // Create plugin B - depends on A
-    createPluginDir('pluginB', ['pluginA']);
+    createPluginFile('pluginB', ['pluginA']);
 
     // Create plugin C - depends on B
-    createPluginDir('pluginC', ['pluginB']);
+    createPluginFile('pluginC', ['pluginB']);
 
     // Create plugin D - depends on A and C
-    createPluginDir('pluginD', ['pluginA', 'pluginC']);
+    createPluginFile('pluginD', ['pluginA', 'pluginC']);
 
     console.log('Test environment set up successfully');
 }
 
 /**
- * Create a plugin directory with manifest and js file
+ * Create a plugin file with the specified dependencies
  */
-function createPluginDir(pluginName, dependencies) {
-    const pluginDir = path.join(pluginsDir, pluginName);
-    fs.mkdirSync(pluginDir, { recursive: true });
-
-    // Create manifest.json
-    const manifest = {
-        name: pluginName,
-        dependencies: dependencies
-    };
-    fs.writeFileSync(
-        path.join(pluginDir, 'manifest.json'),
-        JSON.stringify(manifest, null, 2)
-    );
-
-    // Create plugin JS file with mock implementation
+function createPluginFile(pluginName, dependencies) {
     const pluginCode = `
         let instance = null;
+
+        function getName() {
+            return "${pluginName}";
+        }
+
+        function getDependencies() {
+            return ${JSON.stringify(dependencies)};
+        }
 
         function getInstance() {
             if (!instance) {
@@ -90,12 +84,14 @@ function createPluginDir(pluginName, dependencies) {
         }
 
         module.exports = {
+            getName,
+            getDependencies,
             getInstance,
             getAllow
         };
     `;
 
-    fs.writeFileSync(path.join(pluginDir, `${pluginName}.js`), pluginCode);
+    fs.writeFileSync(path.join(pluginsDir, `${pluginName}.js`), pluginCode);
 }
 
 /**
@@ -267,42 +263,10 @@ async function testCircularDependency() {
     const circularPluginsDir = path.join(circularDir, 'plugins');
     fs.mkdirSync(circularPluginsDir, { recursive: true });
     
-    // Create plugins with circular dependencies: X depends on Y, Y depends on Z, Z depends on X
-    const pluginXDir = path.join(circularPluginsDir, 'pluginX');
-    const pluginYDir = path.join(circularPluginsDir, 'pluginY');
-    const pluginZDir = path.join(circularPluginsDir, 'pluginZ');
-    
-    fs.mkdirSync(pluginXDir, { recursive: true });
-    fs.mkdirSync(pluginYDir, { recursive: true });
-    fs.mkdirSync(pluginZDir, { recursive: true });
-    
-    // Create manifest files with circular dependencies
-    fs.writeFileSync(
-        path.join(pluginXDir, 'manifest.json'),
-        JSON.stringify({ name: 'pluginX', dependencies: ['pluginY'] }, null, 2)
-    );
-    
-    fs.writeFileSync(
-        path.join(pluginYDir, 'manifest.json'),
-        JSON.stringify({ name: 'pluginY', dependencies: ['pluginZ'] }, null, 2)
-    );
-    
-    fs.writeFileSync(
-        path.join(pluginZDir, 'manifest.json'),
-        JSON.stringify({ name: 'pluginZ', dependencies: ['pluginX'] }, null, 2)
-    );
-    
-    // Create plugin JS files (minimal implementation)
-    const pluginCode = `
-        module.exports = {
-            getInstance: () => ({}),
-            getAllow: () => (() => true)
-        };
-    `;
-    
-    fs.writeFileSync(path.join(pluginXDir, 'pluginX.js'), pluginCode);
-    fs.writeFileSync(path.join(pluginYDir, 'pluginY.js'), pluginCode);
-    fs.writeFileSync(path.join(pluginZDir, 'pluginZ.js'), pluginCode);
+    // Create circular dependency plugins: X depends on Y, Y depends on Z, Z depends on X
+    createCircularPluginFile(circularPluginsDir, 'pluginX', ['pluginY']);
+    createCircularPluginFile(circularPluginsDir, 'pluginY', ['pluginZ']);
+    createCircularPluginFile(circularPluginsDir, 'pluginZ', ['pluginX']);
     
     // Initialize manager with circular dependencies dir, should throw an error
     const manager = new PluginManager(circularDir);
@@ -318,9 +282,36 @@ async function testCircularDependency() {
     }
 }
 
-// Run the tests
-runTests().catch(console.error);
+/**
+ * Create a plugin file with circular dependencies
+ */
+function createCircularPluginFile(pluginsDir, pluginName, dependencies) {
+    const pluginCode = `
+        function getName() {
+            return "${pluginName}";
+        }
 
-module.exports = {
-    runTests
-}; 
+        function getDependencies() {
+            return ${JSON.stringify(dependencies)};
+        }
+
+        function getInstance() {
+            return {};
+        }
+
+        function getAllow() {
+            return function() { return true; };
+        }
+
+        module.exports = {
+            getName,
+            getDependencies,
+            getInstance,
+            getAllow
+        };
+    `;
+
+    fs.writeFileSync(path.join(pluginsDir, `${pluginName}.js`), pluginCode);
+}
+
+runTests().catch(console.error);

@@ -30,13 +30,33 @@ function shutdown() {
 }
 
 function ServerlessAPI(config) {
-    let {storage, port, dynamicPort, host, urlPrefix, coreConfigs} = config;
+    let {storage, port, dynamicPort, host, urlPrefix} = config;
+    
+    // Validate that storage is defined
+    if (!storage) {
+        throw new Error("Storage path must be defined for ServerlessAPI initialization");
+    }
+    
     urlPrefix = `/${urlPrefix}`;
     const httpWrapper = require("./httpWrapper");
     const Server = httpWrapper.Server;
     const bodyReaderMiddleware = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
-    const CoreContainer = require("./lib/CoreContainer");
-    const coreContainer = new CoreContainer(coreConfigs);
+    const PluginManager = require("./lib/PluginManager");
+    
+    // Create the plugin manager with storage path for plugin discovery
+    const pluginManager = new PluginManager(storage);
+    
+    // Initialize plugin manager to discover and load plugins
+    (async () => {
+        try {
+            console.log(`Initializing PluginManager with storage path: ${storage}`);
+            await pluginManager.init();
+            console.log('PluginManager initialization completed');
+        } catch (error) {
+            console.error('Error initializing PluginManager:', error);
+        }
+    })();
+    
     const CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL = 500;
     host = host || "127.0.0.1";
     port = port || 8082;
@@ -180,7 +200,7 @@ function ServerlessAPI(config) {
                 return res.end(JSON.stringify(resObj));
             }
             try {
-                resObj.result = await coreContainer.executeCommand(command);
+                resObj.result = await pluginManager.executeCommand(command);
                 resObj.statusCode = 200;
                 res.statusCode = 200;
             } catch (e) {
@@ -192,32 +212,12 @@ function ServerlessAPI(config) {
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
-
-        server.put(`${urlPrefix}/registerPlugin`, bodyReaderMiddleware);
-        server.put(`${urlPrefix}/registerPlugin`, async (req, res) => {
-            let parsedBody;
-            try {
-                parsedBody = JSON.parse(req.body);
-            } catch (e) {
-                res.statusCode = 400;
-                res.end(JSON.stringify({err: "Invalid body"}));
-                return;
-            }
-            let {pluginPath, pluginName} = parsedBody;
-            try {
-                await coreContainer.registerPlugin(pluginName, pluginPath);
-                res.statusCode = 200;
-                res.end(JSON.stringify({result: "success", statusCode: 200}));
-            } catch (e) {
-                res.statusCode = 500;
-                res.end(JSON.stringify({result: e.message, statusCode: 500}));
-            }
-        })
     }
 
     server.getUrl = () => {
         return `http://${host}:${port}${urlPrefix}`;
     }
+
     return server;
 }
 
