@@ -57,10 +57,6 @@ function createPluginFile(pluginName, dependencies) {
     const pluginCode = `
         let instance = null;
 
-        function getName() {
-            return "${pluginName}";
-        }
-
         function getDependencies() {
             return ${JSON.stringify(dependencies)};
         }
@@ -84,7 +80,6 @@ function createPluginFile(pluginName, dependencies) {
         }
 
         module.exports = {
-            getName,
             getDependencies,
             getInstance,
             getAllow
@@ -287,10 +282,6 @@ async function testCircularDependency() {
  */
 function createCircularPluginFile(pluginsDir, pluginName, dependencies) {
     const pluginCode = `
-        function getName() {
-            return "${pluginName}";
-        }
-
         function getDependencies() {
             return ${JSON.stringify(dependencies)};
         }
@@ -304,7 +295,6 @@ function createCircularPluginFile(pluginsDir, pluginName, dependencies) {
         }
 
         module.exports = {
-            getName,
             getDependencies,
             getInstance,
             getAllow
