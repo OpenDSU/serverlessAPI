@@ -212,6 +212,27 @@ function ServerlessAPI(config) {
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
+
+        server.put(`${urlPrefix}/registerPlugin`, bodyReaderMiddleware);
+        server.put(`${urlPrefix}/registerPlugin`, async (req, res) => {
+            let parsedBody;
+            try {
+                parsedBody = JSON.parse(req.body);
+            } catch (e) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({err: "Invalid body"}));
+                return;
+            }
+            let {pluginPath, pluginName} = parsedBody;
+            try {
+                await pluginManager.registerPlugin(pluginName, pluginPath);
+                res.statusCode = 200;
+                res.end(JSON.stringify({result: "success", statusCode: 200}));
+            } catch (e) {
+                res.statusCode = 500;
+                res.end(JSON.stringify({result: e.message, statusCode: 500}));
+            }
+        })
     }
 
     server.getUrl = () => {
