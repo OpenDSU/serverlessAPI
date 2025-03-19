@@ -30,7 +30,7 @@ function shutdown() {
 }
 
 function ServerlessAPI(config) {
-    let {storage, port, dynamicPort, host, urlPrefix} = config;
+    let {storage, port, dynamicPort = true, host, urlPrefix} = config;
     
     // Validate that storage is defined
     if (!storage) {
@@ -86,15 +86,42 @@ function ServerlessAPI(config) {
                     return Math.floor(Math.random() * (max - min) + min);
                 }
 
-                port = getRandomPort();
-                if (Number.isInteger(dynamicPort)) {
-                    dynamicPort -= 1;
+                // Try to find a free port recursively
+                const net = require('net');
+                const testServer = net.createServer();
+                
+                function tryNextPort() {
+                    port = getRandomPort();
+                    if (Number.isInteger(dynamicPort)) {
+                        dynamicPort -= 1;
+                    }
+                    
+                    testServer.once('error', (err) => {
+                        if (err.code === 'EADDRINUSE') {
+                            // Port is in use, try another one
+                            testServer.close();
+                            tryNextPort();
+                        } else {
+                            // Only send non-port-related errors to parent
+                            if (process.connected) {
+                                process.send({type: 'error', error: err.message || 'Failed to start server'});
+                            }
+                        }
+                    });
+
+                    testServer.once('listening', () => {
+                        testServer.close();
+                        boot();
+                    });
+
+                    testServer.listen(port);
                 }
-                setTimeout(boot, CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL);
-                return
+
+                tryNextPort();
+                return;
             }
+            // Only send non-port-related errors to parent
             console.error(err);
-            // Notify parent process of the error
             if (process.connected) {
                 process.send({type: 'error', error: err.message || 'Failed to start server'});
             }
