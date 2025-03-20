@@ -2,6 +2,17 @@ const path = require("path");
 const bundlePath = path.join(process.env.PSK_ROOT_INSTALATION_FOLDER, 'builds/output/pskWebServer.js');
 require(bundlePath);
 
+// Process environment variables from parent process if available
+process.on('message', (message) => {
+    if (message.type === 'start') {
+        // Start the server with the provided configuration
+        server = ServerlessAPI(message.config);
+    } else if (message.type === 'shutdown') {
+        // Gracefully shut down the server
+        shutdown();
+    }
+});
+
 process.on('uncaughtException', err => {
     console.error('There was an uncaught error', err);
     // Notify parent process of the error
@@ -31,21 +42,21 @@ function shutdown() {
 
 function ServerlessAPI(config) {
     let {storage, port, dynamicPort = true, host, urlPrefix} = config;
-    
+
     // Validate that storage is defined
     if (!storage) {
         throw new Error("Storage path must be defined for ServerlessAPI initialization");
     }
-    
+
     urlPrefix = `/${urlPrefix}`;
     const httpWrapper = require("./httpWrapper");
     const Server = httpWrapper.Server;
     const bodyReaderMiddleware = require("./httpWrapper/utils/middlewares").bodyReaderMiddleware;
     const PluginManager = require("./lib/PluginManager");
-    
+
     // Create the plugin manager with storage path for plugin discovery
     const pluginManager = new PluginManager(storage);
-    
+
     // Initialize plugin manager to discover and load plugins
     (async () => {
         try {
@@ -56,7 +67,7 @@ function ServerlessAPI(config) {
             console.error('Error initializing PluginManager:', error);
         }
     })();
-    
+
     const CHECK_FOR_RESTART_COMMAND_FILE_INTERVAL = 500;
     host = host || "127.0.0.1";
     port = port || 8082;
@@ -74,6 +85,7 @@ function ServerlessAPI(config) {
     accessControlAllowHeaders.add("Access-Control-Allow-Origin");
     accessControlAllowHeaders.add("User-Agent");
     accessControlAllowHeaders.add("Authorization");
+    accessControlAllowHeaders.add("X-Environment-Variables");
 
     let listenCallback = (err) => {
         if (err) {
@@ -89,13 +101,13 @@ function ServerlessAPI(config) {
                 // Try to find a free port recursively
                 const net = require('net');
                 const testServer = net.createServer();
-                
+
                 function tryNextPort() {
                     port = getRandomPort();
                     if (Number.isInteger(dynamicPort)) {
                         dynamicPort -= 1;
                     }
-                    
+
                     testServer.once('error', (err) => {
                         if (err.code === 'EADDRINUSE') {
                             // Port is in use, try another one
@@ -145,9 +157,7 @@ function ServerlessAPI(config) {
         if (process.connected) {
             const serverUrl = server.getUrl();
             process.send({
-                type: 'ready',
-                url: serverUrl,
-                port: port
+                type: 'ready', url: serverUrl, port: port
             });
             console.info(`Server URL: ${serverUrl} sent to parent process`);
         }
@@ -176,6 +186,21 @@ function ServerlessAPI(config) {
             }
             return headers;
         }
+
+        // Middleware to process environment variables
+        server.use(function processEnvironmentVariables(req, res, next) {
+            const envVarsHeader = req.headers['x-environment-variables'];
+            if (envVarsHeader) {
+                try {
+                    const envVars = JSON.parse(envVarsHeader);
+                    // Merge environment variables with process.env
+                    Object.assign(process.env, envVars);
+                } catch (error) {
+                    console.error('Error processing environment variables:', error);
+                }
+            }
+            next();
+        });
 
         server.use(function gracefulTerminationWatcher(req, res, next) {
             if (process.shuttingDown) {
@@ -206,8 +231,7 @@ function ServerlessAPI(config) {
                 return {
                     name: value.name,
                     message: value.message,
-                    stack: value.stack,
-                    // Optionally, include any other custom properties
+                    stack: value.stack, // Optionally, include any other custom properties
                     ...value
                 };
             }
@@ -215,7 +239,7 @@ function ServerlessAPI(config) {
         }
 
         const executeCommand = async (req, res) => {
-            let resObj = {statusCode: undefined, result: undefined};
+            let resObj = {statusCode: undefined, result: undefined, operationType: undefined};
             let command = req.body;
             try {
                 command = JSON.parse(command);
@@ -227,8 +251,10 @@ function ServerlessAPI(config) {
                 return res.end(JSON.stringify(resObj));
             }
             try {
-                resObj.result = await pluginManager.executeCommand(command);
+                let pluginResult = await pluginManager.executeCommand(command);
                 resObj.statusCode = 200;
+                resObj.operationType = pluginResult.operationType;
+                resObj.result = pluginResult.result;
                 res.statusCode = 200;
             } catch (e) {
                 res.statusCode = 500;
@@ -268,14 +294,3 @@ function ServerlessAPI(config) {
 
     return server;
 }
-
-// Listen for messages from the parent process
-process.on('message', (message) => {
-    if (message.type === 'start') {
-        // Start the server with the provided configuration
-        server = ServerlessAPI(message.config);
-    } else if (message.type === 'shutdown') {
-        // Gracefully shut down the server
-        shutdown();
-    }
-});
