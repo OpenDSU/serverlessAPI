@@ -10,6 +10,12 @@ process.on('message', (message) => {
     } else if (message.type === 'shutdown') {
         // Gracefully shut down the server
         shutdown();
+q    } else if (message.type === 'setEnv') {
+        // Update environment variables
+        if (message.envVars) {
+            Object.assign(process.env, message.envVars);
+            console.info('Environment variables updated from parent process');
+        }
     }
 });
 
@@ -85,7 +91,6 @@ function ServerlessAPI(config) {
     accessControlAllowHeaders.add("Access-Control-Allow-Origin");
     accessControlAllowHeaders.add("User-Agent");
     accessControlAllowHeaders.add("Authorization");
-    accessControlAllowHeaders.add("X-Environment-Variables");
 
     let listenCallback = (err) => {
         if (err) {
@@ -186,21 +191,6 @@ function ServerlessAPI(config) {
             }
             return headers;
         }
-
-        // Middleware to process environment variables
-        server.use(function processEnvironmentVariables(req, res, next) {
-            const envVarsHeader = req.headers['x-environment-variables'];
-            if (envVarsHeader) {
-                try {
-                    const envVars = JSON.parse(envVarsHeader);
-                    // Merge environment variables with process.env
-                    Object.assign(process.env, envVars);
-                } catch (error) {
-                    console.error('Error processing environment variables:', error);
-                }
-            }
-            next();
-        });
 
         server.use(function gracefulTerminationWatcher(req, res, next) {
             if (process.shuttingDown) {
