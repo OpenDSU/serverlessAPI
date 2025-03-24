@@ -10,12 +10,6 @@ process.on('message', (message) => {
     } else if (message.type === 'shutdown') {
         // Gracefully shut down the server
         shutdown();
-    } else if (message.type === 'setEnv') {
-        // Update environment variables
-        if (message.envVars) {
-            Object.assign(process.env, message.envVars);
-            console.info('Environment variables updated from parent process');
-        }
     }
 });
 
@@ -241,8 +235,33 @@ function ServerlessAPI(config) {
         }
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
-    }
 
+        server.put(`${urlPrefix}/restart`, bodyReaderMiddleware);
+        server.put(`${urlPrefix}/restart`, async (req, res) => {
+            let resObj = {statusCode: undefined, result: undefined};
+            try {
+                let envVars;
+                try {
+                    envVars = JSON.parse(req.body);
+                } catch (e) {
+                    envVars = {};
+                }
+
+                await pluginManager.restart(envVars);
+                
+                resObj.statusCode = 200;
+                resObj.result = 'Plugins restarted successfully';
+                res.statusCode = 200;
+            } catch (e) {
+                console.error('Error restarting plugins:', e);
+                res.statusCode = 500;
+                resObj.statusCode = 500;
+                resObj.result = e.message;
+            }
+            res.end(JSON.stringify(resObj));
+        });
+    }
+    
     server.getUrl = () => {
         return `http://${host}:${port}${urlPrefix}`;
     }
