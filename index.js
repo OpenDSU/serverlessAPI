@@ -10,7 +10,7 @@ process.on('message', (message) => {
     } else if (message.type === 'shutdown') {
         // Gracefully shut down the server
         shutdown();
-q    } else if (message.type === 'setEnv') {
+    } else if (message.type === 'setEnv') {
         // Update environment variables
         if (message.envVars) {
             Object.assign(process.env, message.envVars);
@@ -213,20 +213,6 @@ function ServerlessAPI(config) {
         });
 
         server.put(`${urlPrefix}/executeCommand`, bodyReaderMiddleware);
-
-        function errorReplacer(key, value) {
-            // Check if the value is an Error object
-            if (value instanceof Error) {
-                // Return an object with the properties you want
-                return {
-                    name: value.name,
-                    message: value.message,
-                    stack: value.stack, // Optionally, include any other custom properties
-                    ...value
-                };
-            }
-            return value;
-        }
 
         const executeCommand = async (req, res) => {
             let resObj = {statusCode: undefined, result: undefined, operationType: undefined};
