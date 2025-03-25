@@ -1,7 +1,3 @@
-const path = require("path");
-const bundlePath = path.join(process.env.PSK_ROOT_INSTALATION_FOLDER, 'builds/output/pskWebServer.js');
-require(bundlePath);
-
 // Process environment variables from parent process if available
 process.on('message', (message) => {
     if (message.type === 'start') {
