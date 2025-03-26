@@ -225,6 +225,7 @@ function ServerlessAPI(config) {
             } catch (e) {
                 res.statusCode = 500;
                 resObj.statusCode = 500;
+                console.error(e);
                 resObj.result = e.message;
             }
             res.end(JSON.stringify(resObj));
