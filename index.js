@@ -288,6 +288,18 @@ function ServerlessAPI(config) {
             }
             res.end(JSON.stringify(resObj));
         });
+
+        server.get(`${urlPrefix}/ready`, (req, res) => {
+            const resObj = {
+                statusCode: 200,
+                result: {
+                    status: 'ready',
+                    timestamp: Date.now()
+                }
+            };
+            res.statusCode = 200;
+            res.end(JSON.stringify(resObj));
+        });
     }
     
     server.getUrl = () => {
