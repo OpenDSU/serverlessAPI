@@ -290,15 +290,27 @@ function ServerlessAPI(config) {
             res.end(JSON.stringify(resObj));
         });
 
-        server.get(`${urlPrefix}/ready`, (req, res) => {
-            const resObj = {
-                statusCode: 200,
-                result: {
-                    status: 'ready',
-                    timestamp: Date.now()
+        server.get(`${urlPrefix}/ready`, async (req, res) => {
+            let resObj = { statusCode: undefined, result: undefined };
+            let isInitialized = false;
+            try {
+                isInitialized = pluginManager.isInitialized();
+                if (isInitialized) {
+                    resObj.statusCode = 200;
+                    resObj.result = {
+                        status: 'ready',
+                        timestamp: Date.now()
+                    };
+                } else {
+                    resObj.statusCode = 200;
+                    resObj.result = 'not-ready';
                 }
-            };
-            res.statusCode = 200;
+            } catch (e) {
+                console.error('Error checking if plugins are initialized:', e);
+                res.statusCode = 500;
+                resObj.statusCode = 500;
+                resObj.result = e.message;
+            }
             res.end(JSON.stringify(resObj));
         });
     }
