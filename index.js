@@ -241,7 +241,7 @@ function ServerlessAPI(config) {
                 try {
                     envVars = JSON.parse(req.body);
                 } catch (e) {
-                    envVars = {};
+                    // ignore error
                 }
 
                 await pluginManager.restart(envVars);
