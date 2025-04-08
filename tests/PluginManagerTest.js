@@ -239,7 +239,7 @@ async function testCommandExecution() {
     };
     
     const result = await manager.executeCommand(command);
-    assert.strictEqual(result, 'Hello from pluginA', 'Command execution should return the correct result');
+    assert.strictEqual(result.result, 'Hello from pluginA', 'Command execution should return the correct result');
     
     console.log('✓ Command execution test passed');
 }
