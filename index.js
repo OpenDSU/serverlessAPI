@@ -233,31 +233,6 @@ function ServerlessAPI(config) {
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
 
-        server.put(`${urlPrefix}/restart`, bodyReaderMiddleware);
-        server.put(`${urlPrefix}/restart`, async (req, res) => {
-            let resObj = {statusCode: undefined, result: undefined};
-            try {
-                let envVars;
-                try {
-                    envVars = JSON.parse(req.body);
-                } catch (e) {
-                    // ignore error
-                }
-
-                await pluginManager.restart(envVars);
-                
-                resObj.statusCode = 200;
-                resObj.result = 'Plugins restarted successfully';
-                res.statusCode = 200;
-            } catch (e) {
-                console.error('Error restarting plugins:', e);
-                res.statusCode = 500;
-                resObj.statusCode = 500;
-                resObj.result = e.message;
-            }
-            res.end(JSON.stringify(resObj));
-        });
-
         // Add setEnv endpoint
         server.put(`${urlPrefix}/setEnv`, bodyReaderMiddleware);
         server.put(`${urlPrefix}/setEnv`, async (req, res) => {
@@ -266,6 +241,7 @@ function ServerlessAPI(config) {
                 let envVars;
                 try {
                     envVars = JSON.parse(req.body);
+                    await pluginManager.restart(envVars);
                 } catch (e) {
                     res.statusCode = 400;
                     resObj.statusCode = 400;
