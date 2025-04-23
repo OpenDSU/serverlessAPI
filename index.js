@@ -233,39 +233,6 @@ function ServerlessAPI(config) {
 
         server.put(`${urlPrefix}/executeCommand`, executeCommand);
 
-        // Add setEnv endpoint
-        server.put(`${urlPrefix}/setEnv`, bodyReaderMiddleware);
-        server.put(`${urlPrefix}/setEnv`, async (req, res) => {
-            let resObj = {statusCode: undefined, result: undefined};
-            try {
-                let envVars;
-                try {
-                    envVars = JSON.parse(req.body);
-                    await pluginManager.restart(envVars);
-                } catch (e) {
-                    res.statusCode = 400;
-                    resObj.statusCode = 400;
-                    resObj.result = 'Invalid JSON body';
-                    return res.end(JSON.stringify(resObj));
-                }
-
-                // Set environment variables
-                for (const [key, value] of Object.entries(envVars)) {
-                    process.env[key] = value;
-                }
-
-                resObj.statusCode = 200;
-                resObj.result = 'Environment variables set successfully';
-                res.statusCode = 200;
-            } catch (e) {
-                console.error('Error setting environment variables:', e);
-                res.statusCode = 500;
-                resObj.statusCode = 500;
-                resObj.result = e.message;
-            }
-            res.end(JSON.stringify(resObj));
-        });
-
         server.get(`${urlPrefix}/ready`, async (req, res) => {
             let resObj = { statusCode: undefined, result: undefined };
             let isInitialized = false;
