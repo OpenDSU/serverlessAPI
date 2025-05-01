@@ -136,7 +136,7 @@ class ProcessManager {
         let envVars = {};
 
         try {
-            const secretsService = await require('../../components/secrets/SecretsService')
+            const secretsService = await require('../components/secrets/SecretsService')
                 .getSecretsServiceInstanceAsync(storagePath);
 
             let secretsEnv = await secretsService.getSecretsAsync(processId);
@@ -170,7 +170,7 @@ class ProcessManager {
             throw new Error("Storage path must be defined for ServerlessAPI initialization");
         }
 
-        const serverlessAPIPath = path.resolve(path.join(process.env.PSK_ROOT_INSTALATION_FOLDER, `.${__dirname}`, '../serverlessAPI', 'index.js'))
+        const serverlessAPIPath = path.resolve(path.join(process.env.PSK_ROOT_INSTALATION_FOLDER, `.${__dirname}`, 'index.js'))
 
         const serverId = config.urlPrefix || `process-${Date.now()}`;
         if (!config.id) {
