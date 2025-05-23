@@ -13,7 +13,7 @@ process.on('uncaughtException', err => {
     console.error('There was an uncaught error', err);
     // Notify parent process of the error
     if (process.connected) {
-        process.send({type: 'error', error: err.message});
+        process.send({ type: 'error', error: err.message });
     }
 });
 
@@ -37,7 +37,7 @@ function shutdown() {
 }
 
 function ServerlessAPI(config) {
-    let {storage, port, dynamicPort = true, host, urlPrefix} = config;
+    let { storage, port, dynamicPort = true, host, urlPrefix } = config;
 
     // Validate that storage is defined
     if (!storage) {
@@ -111,7 +111,7 @@ function ServerlessAPI(config) {
                         } else {
                             // Only send non-port-related errors to parent
                             if (process.connected) {
-                                process.send({type: 'error', error: err.message || 'Failed to start server'});
+                                process.send({ type: 'error', error: err.message || 'Failed to start server' });
                             }
                         }
                     });
@@ -130,7 +130,7 @@ function ServerlessAPI(config) {
             // Only send non-port-related errors to parent
             console.error(err);
             if (process.connected) {
-                process.send({type: 'error', error: err.message || 'Failed to start server'});
+                process.send({ type: 'error', error: err.message || 'Failed to start server' });
             }
         }
     };
@@ -140,7 +140,7 @@ function ServerlessAPI(config) {
             console.error(err);
             // Notify parent process of the error
             if (process.connected) {
-                process.send({type: 'error', error: err.message || 'Failed to bind server'});
+                process.send({ type: 'error', error: err.message || 'Failed to bind server' });
             }
             return;
         }
@@ -205,7 +205,7 @@ function ServerlessAPI(config) {
         server.put(`${urlPrefix}/executeCommand`, bodyReaderMiddleware);
 
         const executeCommand = async (req, res) => {
-            let resObj = {statusCode: undefined, result: undefined, operationType: undefined};
+            let resObj = { statusCode: undefined, result: undefined, operationType: undefined };
             let command = req.body;
             try {
                 command = JSON.parse(command);
@@ -226,7 +226,10 @@ function ServerlessAPI(config) {
                 res.statusCode = 500;
                 resObj.statusCode = 500;
                 console.error(e);
-                resObj.result = e.message;
+                resObj.result = {
+                    message: e.message,
+                    stack: e.stack
+                };
             }
             res.end(JSON.stringify(resObj));
         }
@@ -257,7 +260,7 @@ function ServerlessAPI(config) {
             res.end(JSON.stringify(resObj));
         });
     }
-    
+
     server.getUrl = () => {
         return `http://${host}:${port}${urlPrefix}`;
     }
