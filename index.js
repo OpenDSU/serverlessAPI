@@ -259,6 +259,25 @@ function ServerlessAPI(config) {
             }
             res.end(JSON.stringify(resObj));
         });
+
+        server.get(`${urlPrefix}/getPublicMethods/:pluginName`, async (req, res) => {
+            let resObj = { statusCode: undefined, result: undefined };
+            let pluginName = req.params.pluginName;
+            if (!pluginName) {
+                resObj.statusCode = 400;
+                resObj.result = "Plugin name is required";
+                return res.end(JSON.stringify(resObj));
+            }
+            try {
+                let publicMethods = pluginManager.getPublicMethods(pluginName);
+                resObj.statusCode = 200;
+                resObj.result = publicMethods;
+            } catch (error) {
+                resObj.statusCode = 404;
+                resObj.result = error.message;
+            }
+            res.end(JSON.stringify(resObj));
+        });
     }
 
     server.getUrl = () => {
