@@ -38,7 +38,11 @@ function shutdown() {
 
 function ServerlessAPI(config) {
     let { storage, port, dynamicPort = true, host, urlPrefix } = config;
-
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    console.log("SERVERLESS_ID before", process.env.SERVERLESS_ID)
+    process.env.SERVERLESS_ID = config.urlPrefix;
+    console.log("SERVERLESS_ID after", process.env.SERVERLESS_ID)
+    console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     // Validate that storage is defined
     if (!storage) {
         throw new Error("Storage path must be defined for ServerlessAPI initialization");

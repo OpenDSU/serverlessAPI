@@ -7,10 +7,12 @@
  */
 
 const { fork } = require('child_process');
+const { EventEmitter } = require('events');
 const path = require('path');
 
-class ProcessManager {
+class ProcessManager extends EventEmitter {
     constructor() {
+        super();
         this.processes = new Map(); // Map to track all managed processes
         this.restartingProcesses = new Set(); // Set to track processes that are currently restarting
     }
@@ -89,6 +91,9 @@ class ProcessManager {
                     this.processes.set(processId, processInfo);
 
                     this._setupPersistentHandlers(processId, processInfo);
+
+                    // Emit event for process registration
+                    this.emit('processRegistered', processId, processInfo);
 
                     resolve(processInfo);
                 } else if (message.type === 'error') {
@@ -200,6 +205,7 @@ class ProcessManager {
                 return new Promise((resolveClose) => {
                     processInfo.process.send({ type: 'shutdown' });
                     processInfo.process.on('exit', () => {
+                        this.emit('processUnregistered', processInfo.id);
                         this.processes.delete(processInfo.id);
                         resolveClose();
                     });
@@ -210,6 +216,7 @@ class ProcessManager {
 
             kill: () => {
                 processInfo.process.kill('SIGTERM');
+                this.emit('processUnregistered', processInfo.id);
                 this.processes.delete(processInfo.id);
             }
         };
@@ -227,11 +234,13 @@ class ProcessManager {
 
         childProcess.on('exit', (code, signal) => {
             console.warn(`Registered process ${processId} (PID: ${childProcess.pid || 'N/A'}) exited with code ${code}, signal ${signal}. Removing registration.`);
+            this.emit('processUnregistered', processId);
             this.processes.delete(processId);
         });
 
         childProcess.on('error', (err) => {
             console.error(`Error from registered process ${processId} (PID: ${childProcess.pid || 'N/A'}):`, err);
+            this.emit('processUnregistered', processId);
             this.processes.delete(processId);
         });
     }
@@ -251,6 +260,9 @@ class ProcessManager {
         }
 
         this.restartingProcesses.add(processId);
+
+        // Emit event for process restart
+        this.emit('processRestarting', processId);
 
         const { config, scriptPath } = processInfo;
 
@@ -296,6 +308,7 @@ class ProcessManager {
             console.log(`Process ${processId} shutdown confirmed`);
         }
 
+        this.emit('processUnregistered', processId);
         this.processes.delete(processId);
 
         console.log(`Attempting to fork new process ${processId} with updated environment.`);
