@@ -49,9 +49,9 @@ function ServerlessAPI(config) {
     }
 
     urlPrefix = `/${urlPrefix}`;
-    const httpWrapper = require("http-wrapper");
+    const httpWrapper = require("../http-wrapper");
     const Server = httpWrapper.Server;
-    const bodyReaderMiddleware = httpWrapper.utils.middlewares.bodyReaderMiddleware;
+    const bodyReaderMiddleware = require("../http-wrapper/utils/middlewares").bodyReaderMiddleware;
     const PluginManager = require("./lib/PluginManager");
 
     // Create the plugin manager with storage path for plugin discovery
