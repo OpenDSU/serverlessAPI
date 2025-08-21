@@ -1,0 +1,3 @@
+    Update default configuration to include internal and external webhook components
+    
+    Modified the activeComponents array in default.js to replace the "webhook" entry with "internalWebhook" and added "externalWebhook". This change aligns with recent refactoring efforts to enhance component organization and security.
